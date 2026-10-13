@@ -1,0 +1,143 @@
+schema: '2.0'
+stages:
+  download:
+    cmd: uv run python -m src.download
+    deps:
+    - path: src/download.py
+      hash: md5
+      md5: 485bee705915dfc841119ab38770ae28
+      size: 1243
+    params:
+      params.yaml:
+        data.raw: data/raw/bank-additional-full.csv
+        data.url: 
+          https://archive.ics.uci.edu/static/public/222/bank+marketing.zip
+    outs:
+    - path: data/raw/bank-additional-full.csv
+      hash: md5
+      md5: f6cb2c1256ffe2836b36df321f46e92c
+      size: 5834924
+  prepare:
+    cmd: uv run python -m src.data
+    deps:
+    - path: data/production/labelled.csv
+      hash: md5
+      md5: 55f679f06c3ba5e8d052adb456fe7a3c
+      size: 193
+    - path: data/raw/bank-additional-full.csv
+      hash: md5
+      md5: f6cb2c1256ffe2836b36df321f46e92c
+      size: 5834924
+    - path: src/data.py
+      hash: md5
+      md5: b9c497659c20710e1feaf337b4fcc513
+      size: 4681
+    params:
+      params.yaml:
+        data:
+          url: https://archive.ics.uci.edu/static/public/222/bank+marketing.zip
+          raw: data/raw/bank-additional-full.csv
+          production: data/production/labelled.csv
+          processed_dir: data/processed
+          history_frac: 0.8
+          val_frac: 0.2
+          holdout_frac: 0.3
+          drop_columns:
+          - duration
+          seed: 42
+        model.cat_features:
+        - job
+        - marital
+        - education
+        - default
+        - housing
+        - loan
+        - contact
+        - month
+        - day_of_week
+        - poutcome
+    outs:
+    - path: data/processed/eval.csv
+      hash: md5
+      md5: 20906f1ff0c994de345fece64dd975b3
+      size: 757811
+    - path: data/processed/future.csv
+      hash: md5
+      md5: 2e99627329a03c5465693d96808dcb91
+      size: 927965
+    - path: data/processed/train.csv
+      hash: md5
+      md5: 565398a9fccf4c59c373205e31057601
+      size: 3025231
+  train:
+    cmd: uv run python -m src.train
+    deps:
+    - path: data/processed/train.csv
+      hash: md5
+      md5: 565398a9fccf4c59c373205e31057601
+      size: 3025231
+    - path: src/train.py
+      hash: md5
+      md5: 601b98b366496a79271cf1c98c2fb8a5
+      size: 2282
+    params:
+      params.yaml:
+        model:
+          name: bank-marketing
+          experiment: bank-marketing
+          cat_features:
+          - job
+          - marital
+          - education
+          - default
+          - housing
+          - loan
+          - contact
+          - month
+          - day_of_week
+          - poutcome
+          catboost:
+            iterations: 400
+            learning_rate: 0.05
+            depth: 6
+            random_seed: 42
+    outs:
+    - path: models/model.cbm
+      hash: md5
+      md5: 45bfc42697d20134b195e73f7c32c52a
+      size: 725360
+    - path: run_info.json
+      hash: md5
+      md5: 019bc5b6f5cd455e4ab08e3cbd6b74ea
+      size: 112
+  evaluate:
+    cmd: uv run python -m src.evaluate
+    deps:
+    - path: data/processed/eval.csv
+      hash: md5
+      md5: 20906f1ff0c994de345fece64dd975b3
+      size: 757811
+    - path: models/model.cbm
+      hash: md5
+      md5: 45bfc42697d20134b195e73f7c32c52a
+      size: 725360
+    - path: src/evaluate.py
+      hash: md5
+      md5: 5cf320daffa5c5b92b3d9aa5fda38195
+      size: 1833
+    - path: src/metrics.py
+      hash: md5
+      md5: 680be0f4b2b5d93444f0741ae6d85c8a
+      size: 847
+    params:
+      params.yaml:
+        evaluate.top_k_fraction: 0.2
+    outs:
+    - path: eval_metrics.json
+      hash: md5
+      md5: 10ad2c3e1824163d583b3058553f152e
+      size: 209
+    - path: plots/shap_summary.png
+      hash: md5
+      md5: 1cb3e3df70b5753b0cb6041fed15c518
+      size: 76907
